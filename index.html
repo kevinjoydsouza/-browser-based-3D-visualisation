@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saavira Kambada Basadi — Architectural &amp; Heritage 3D Reconstruction</title>
+    <style>
+        :root {
+            --bg-dark: #0e1013;
+            --panel-bg: rgba(18, 20, 23, 0.90);
+            --panel-border: rgba(196, 160, 98, 0.28);
+            --text-main: #eae5dc;
+            --text-muted: #a39d93;
+            --accent-gold: #c9a055;
+            --accent-copper: #b06c49;
+            --badge-verified: rgba(92, 168, 120, 0.18);
+            --badge-interp: rgba(201, 160, 85, 0.16);
+            --badge-approx: rgba(185, 110, 75, 0.18);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+            user-select: none;
+        }
+
+        #canvas-container {
+            position: absolute;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            width: 100%;
+        }
+
+        .panel {
+            pointer-events: auto;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            box-shadow: 0 10px 36px rgba(0, 0, 0, 0.72);
+        }
+
+        #info-panel {
+            width: 415px;
+            max-width: calc(100vw - 32px);
+            max-height: calc(100vh - 125px);
+            overflow-y: auto;
+            padding: 20px 22px;
+        }
+
+        .eyebrow {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-copper);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        h1 {
+            font-family: 'Georgia', serif;
+            font-size: 19.5px;
+            margin: 0 0 4px 0;
+            color: var(--accent-gold);
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-size: 12px;
+            font-weight: 400;
+            margin: 0 0 12px 0;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, var(--panel-border), transparent);
+            margin: 12px 0;
+        }
+
+        .phase-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .badge {
+            font-size: 10px;
+            padding: 3px 7px;
+            border-radius: 3px;
+            background: var(--badge-interp);
+            border: 1px solid rgba(201, 160, 85, 0.35);
+            color: #e6cf9c;
+            letter-spacing: 0.3px;
+        }
+
+        .badge.verified {
+            background: var(--badge-verified);
+            border-color: rgba(92, 168, 120, 0.45);
+            color: #a9e5be;
+        }
+
+        .badge.approx {
+            background: var(--badge-approx);
+            border-color: rgba(185, 110, 75, 0.45);
+            color: #f0bfa6;
+        }
+
+        #dynamic-content h3 {
+            font-family: 'Georgia', serif;
+            font-size: 16px;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+        }
+
+        #dynamic-content p {
+            font-size: 12.5px;
+            line-height: 1.58;
+            color: #d5d0c5;
+            margin: 0 0 9px 0;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+            margin: 9px 0;
+            background: rgba(0, 0, 0, 0.32);
+            padding: 9px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .meta-item span {
+            display: block;
+            font-size: 9.5px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.45px;
+        }
+
+        .meta-item strong {
+            font-size: 11.5px;
+            color: var(--text-main);
+        }
+
+        .limitation-note {
+            font-size: 11px;
+            color: #d6c296;
+            background: rgba(201, 160, 85, 0.07);
+            padding: 9px 11px;
+            border-left: 2px solid var(--accent-gold);
+            margin-top: 10px;
+            line-height: 1.48;
+        }
+
+        #tools-panel {
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 245px;
+        }
+
+        .tools-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--accent-gold);
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 11.8px;
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 3px 0;
+        }
+
+        .toggle-row input {
+            accent-color: var(--accent-gold);
+            cursor: pointer;
+            width: 14px;
+            height: 14px;
+        }
+
+        .bottom-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            gap: 14px;
+            width: 100%;
+        }
+
+        #presets-panel {
+            display: flex;
+            gap: 5px;
+            pointer-events: auto;
+            flex-wrap: wrap;
+            max-width: 76vw;
+            padding: 9px 11px;
+        }
+
+        button {
+            background: rgba(28, 30, 34, 0.92);
+            color: var(--text-main);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            padding: 6px 11px;
+            font-size: 10.5px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            transition: all 0.16s ease;
+        }
+
+        button:hover, button.active {
+            background: var(--accent-gold);
+            color: #0b0c0e;
+            border-color: var(--accent-gold);
+        }
+
+        #controls-help {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: right;
+            line-height: 1.5;
+            padding: 9px 13px;
+            white-space: nowrap;
+        }
+
+        #tooltip {
+            position: absolute;
+            background: rgba(10, 11, 14, 0.95);
+            color: #fff;
+            padding: 6px 11px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Georgia', serif;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s;
+            z-index: 30;
+            border: 1px solid var(--accent-gold);
+            transform: translate(-50%, -140%);
+            white-space: nowrap;
+            box-shadow: 0 5px 16px rgba(0, 0, 0, 0.7);
+        }
+
+        #loading {
+            position: absolute;
+            inset: 0;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.45s ease;
+        }
+
+        .spinner {
+            width: 42px;
+            height: 42px;
+            border: 2px solid rgba(201, 160, 85, 0.2);
+            border-top-color: var(--accent-gold);
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin-bottom: 14px;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 900px) {
+            .top-row { flex-direction: column; }
+            #info-panel { width: 100%; max-height: 44vh; }
+            #tools-panel { width: 100%; }
+            #controls-help { display: none; }
+            #presets-panel { max-width: 100%; }
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(201, 160, 85, 0.3); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <div style="color: var(--accent-gold); font-family: Georgia, serif; font-size: 15.5px; letter-spacing: 0.7px;">
+            Constructing Saavira Kambada Basadi...
+        </div>
+        <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 6px;">
+            Assembling Open Timber Superstructure, 5 Granite Pillar Families &amp; Coffered Ceilings
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div id="tooltip"></div>
+
+    <div id="ui-layer">
+        <div class="top-row">
+            <div id="info-panel" class="panel">
+                <div class="eyebrow">Conservation-Aware 3D Heritage Reconstruction</div>
+                <h1>Saavira Kambada Basadi</h1>
+                <h2>Tribhuvana Tilaka Chudamani (Chandranatha Basadi)<br>Moodbidri, Dakshina Kannada, Karnataka • 1430–1462 CE</h2>
+
+                <div class="phase-badges">
+                    <span class="badge verified">Photographic Massing</span>
+                    <span class="badge">5 Pillar Families</span>
+                    <span class="badge approx">Proportional Scale</span>
+                </div>
+
+                <div id="dynamic-content"></div>
+
+                <div class="divider"></div>
+                <div style="display: flex; gap: 7px; flex-wrap: wrap;">
+                    <button onclick="resetView()">Reset Camera</button>
+                    <button onclick="resetAllLayers()">Restore All Layers</button>
+                    <button onclick="toggleFullscreen()">Fullscreen</button>
+                </div>
+            </div>
+
+            <div id="tools-panel" class="panel">
+                <div class="tools-title">Layer Visibility &amp; Cutaway</div>
+                <label class="toggle-row">
+                    <span> axial Half-Section Cutaway</span>
+                    <input type="checkbox" id="toggle-section" onchange="updateVisibility()">
+                </label>
+                <div class="divider" style="margin: 4px 0;"></div>
+                <label class="toggle-row">
+                    <span>Show Sloped Roof Coverings</span>
+                    <input type="checkbox" id="toggle-roofs" checked onchange="updateVisibility()">
+                </label>
+                <label class="toggle-row">
+                    <span>Show Upper Timber Storeys</span>
+                    <input type="checkbox" id="toggle-upper" checked onchange="updateVisibility()">
+                </label>
+                <label class="toggle-row">
+                    <span>Show Ceilings &amp; Stone Lintels</span>
+                    <input type="checkbox" id="toggle-ceilings" checked onchange="updateVisibility()">
+                </label>
+                <label class="toggle-row">
+                    <span>Show Sanctum &amp; Enclosure Walls</span>
+                    <input type="checkbox" id="toggle-walls" checked onchange="updateVisibility()">
+                </label>
+                <label class="toggle-row">
+                    <span>Show Pillars &amp; Stone Plinths</span>
+                    <input type="checkbox" id="toggle-pillars" checked onchange="updateVisibility()">
+                </label>
+                <label class="toggle-row">
+                    <span>Show Courtyard &amp; Manastambha</span>
+                    <input type="checkbox" id="toggle-courtyard" checked onchange="updateVisibility()">
+                </label>
+                <div class="divider" style="margin: 4px 0;"></div>
+                <label class="toggle-row">
+                    <span>Raking Late-Afternoon Sunlight</span>
+                    <input type="checkbox" id="toggle-light" onchange="updateLighting()">
+                </label>
+            </div>
+        </div>
+
+        <div class="bottom-row">
+            <div id="presets-panel" class="panel"></div>
+
+            <div id="controls-help" class="panel">
+                <strong>Orbit:</strong> Left Drag &nbsp;|&nbsp;
+                <strong>Pan:</strong> Right Drag &nbsp;|&nbsp;
+                <strong>Zoom:</strong> Scroll Wheel<br>
+                Click any highlighted element for architectural &amp; reference analysis
+            </div>
+        </div>
+    </div>
+
+    <!-- CDN Libraries: Three.js r128, OrbitControls, Tween.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+    <script>
+        // ============================================================================
+        // SECTION 1: SCENE, RENDERER, CLIPPING PLANES & ORBIT CONTROLS
+        // ============================================================================
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x14171b);
+        scene.fog = new THREE.FogExp2(0x14171b, 0.0016);
+
+        const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.5, 1200);
+        camera.position.set(-92, 40, 132);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.localClippingEnabled = true; // Enables clean architectural section cutaway
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.02;
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.012;
+        controls.minDistance = 3.5;
+        controls.maxDistance = 350;
+        controls.target.set(0, 10, 4);
+
+        // Longitudinal section plane along X = -1.5 (cuts away the left/south half of roofs/walls to reveal interior)
+        const sectionPlane = new THREE.Plane(new THREE.Vector3(1, 0, 0), 1.5);
+
+        // ============================================================================
+        // SECTION 2: ARCHITECTURAL LAYER GROUPS (STRICT HIERARCHY)
+        // ============================================================================
+        const layers = {
+            pillarsAndPlinths: new THREE.Group(),
+            wallsAndEnclosures: new THREE.Group(),
+            ceilingsAndBeams: new THREE.Group(),
+            upperTimberStoreys: new THREE.Group(),
+            roofCoverings: new THREE.Group(),
+            interiorSacredDetails: new THREE.Group(),
+            courtyardAndManastambha: new THREE.Group()
+        };
+        Object.values(layers).forEach(g => scene.add(g));
+
+        // ============================================================================
+        // SECTION 3: LIGHTING (NATURAL DAYLIGHT + SUBTLE BOUNCE FILL)
+        // ============================================================================
+        const hemiLight = new THREE.HemisphereLight(0xfef6e6, 0x3b4046, 0.58);
+        scene.add(hemiLight);
+
+        const sunLight = new THREE.DirectionalLight(0xfff1d8, 1.32);
+        sunLight.position.set(88, 118, 78);
+        sunLight.castShadow = true;
+        sunLight.shadow.camera.left = -125;
+        sunLight.shadow.camera.right = 125;
+        sunLight.shadow.camera.top = 125;
+        sunLight.shadow.camera.bottom = -125;
+        sunLight.shadow.camera.near = 10;
+        sunLight.shadow.camera.far = 360;
+        sunLight.shadow.bias = -0.00035;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        scene.add(sunLight);
+
+        // Restrained interior bounce illumination so coffered ceilings & pillar carvings are legible
+        const interiorBounceCoords = [
+            [0, 6.8, 50, 0.34],
+            [0, 6.8, 13, 0.32],
+            [0, 6.8, -11, 0.35],
+            [0, 6.8, -34, 0.30],
+            [0, 6.8, -54, 0.30],
+            [0, 7.5, -71, 0.72] // Soft warm oil-lamp ambiance inside Garbhagriha
+        ];
+        interiorBounceCoords.forEach(([x, y, z, intensity], i) => {
+            const pt = new THREE.PointLight(i === 5 ? 0xffba66 : 0xd9cfc0, intensity, 34);
+            pt.position.set(x, y, z);
+            scene.add(pt);
+        });
+
+        window.updateLighting = function () {
+            const raking = document.getElementById('toggle-light').checked;
+            if (raking) {
+                new TWEEN.Tween(sunLight.position).to({ x: 138, y: 32, z: 62 }, 850).start();
+                sunLight.color.setHex(0xffcf94);
+            } else {
+                new TWEEN.Tween(sunLight.position).to({ x: 88, y: 118, z: 78 }, 850).start();
+                sunLight.color.setHex(0xfff1d8);
+            }
+        };
+
+        // ============================================================================
+        // SECTION 4: PROCEDURAL HERITAGE TEXTURES & RESTRAINED MATERIALS
+        // ============================================================================
+        function createStoneTexture(baseHex, darkRgba, lightRgba, streakAlpha = 0.03) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = baseHex;
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let i = 0; i < 160; i++) {
+                ctx.fillStyle = `rgba(26, 28, 24, ${streakAlpha})`;
+                ctx.fillRect(Math.random() * 512, 0, Math.random() * 12 + 2, 512);
+            }
+            for (let i = 0; i < 22000; i++) {
+                ctx.fillStyle = (i % 2 === 0) ? darkRgba : lightRgba;
+                const s = Math.random() * 2.2 + 0.6;
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, s, s);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2, 2);
+            return tex;
+        }
+
+        function createCopperSeamTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#6c4938';
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let x = 0; x < 512; x += 16) {
+                ctx.fillStyle = '#472e21';
+                ctx.fillRect(x, 0, 2, 512);
+                ctx.fillStyle = '#805946';
+                ctx.fillRect(x + 2, 0, 1, 512);
+            }
+            for (let y = 0; y < 512; y += 32) {
+                ctx.fillStyle = 'rgba(30, 18, 12, 0.42)';
+                ctx.fillRect(0, y, 512, 2);
+            }
+            for (let i = 0; i < 3500; i++) {
+                ctx.fillStyle = (i % 3 === 0) ? 'rgba(92, 114, 96, 0.07)' : 'rgba(48, 30, 20, 0.09)';
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, Math.random() * 7 + 2, Math.random() * 7 + 2);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(6, 4);
+            return tex;
+        }
+
+        function createGraniteSlabRoofTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#64615a';
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let x = 0; x < 512; x += 24) {
+                ctx.fillStyle = '#45423d';
+                ctx.fillRect(x, 0, 3, 512);
+                ctx.fillStyle = '#79756d';
+                ctx.fillRect(x + 3, 0, 2, 512);
+            }
+            for (let y = 0; y < 512; y += 48) {
+                ctx.fillStyle = '#3b3934';
+                ctx.fillRect(0, y, 512, 3);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(4, 3);
+            return tex;
+        }
+
+        function createWoodGrainTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#382417';
+            ctx.fillRect(0, 0, 512, 512);
+            for (let i = 0; i < 5500; i++) {
+                ctx.fillStyle = (i % 2 === 0) ? 'rgba(20, 11, 5, 0.25)' : 'rgba(76, 50, 33, 0.18)';
+                ctx.fillRect(Math.random() * 512, Math.random() * 512, Math.random() * 26 + 4, 2);
+            }
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        const texGraniteLight = createStoneTexture('#7c7870', 'rgba(42,40,37,0.34)', 'rgba(158,153,143,0.26)', 0.03);
+        const texGraniteDark  = createStoneTexture('#646059', 'rgba(28,26,23,0.42)', 'rgba(130,125,117,0.24)', 0.04);
+        const texLaterite     = createStoneTexture('#6a4030', 'rgba(38,18,12,0.48)', 'rgba(132,82,62,0.28)', 0.04);
+        const texCopper       = createCopperSeamTexture();
+        const texStoneRoof    = createGraniteSlabRoofTexture();
+        const texWood         = createWoodGrainTexture();
+
+        const mats = {
+            granitePlinth:   new THREE.MeshStandardMaterial({ map: texGraniteDark, bumpMap: texGraniteDark, bumpScale: 0.035, roughness: 0.88 }),
+            granitePillar:   new THREE.MeshStandardMaterial({ map: texGraniteLight, bumpMap: texGraniteLight, bumpScale: 0.03, roughness: 0.82 }),
+            graniteCarved:   new THREE.MeshStandardMaterial({ map: texGraniteDark, bumpMap: texGraniteDark, bumpScale: 0.045, roughness: 0.78 }),
+            granitePolished: new THREE.MeshStandardMaterial({ map: texGraniteDark, roughness: 0.50, metalness: 0.06, color: 0x57544f }),
+            stoneSlabRoof:   new THREE.MeshStandardMaterial({ map: texStoneRoof, bumpMap: texStoneRoof, bumpScale: 0.045, roughness: 0.86, side: THREE.DoubleSide }),
+            copperRoof:      new THREE.MeshStandardMaterial({ map: texCopper, bumpMap: texCopper, bumpScale: 0.025, roughness: 0.56, metalness: 0.32, side: THREE.DoubleSide }),
+            timberDark:      new THREE.MeshStandardMaterial({ map: texWood, bumpMap: texWood, bumpScale: 0.025, roughness: 0.80 }),
+            timberLouver:    new THREE.MeshStandardMaterial({ map: texWood, roughness: 0.74, color: 0x4b3120 }),
+            lateriteWall:    new THREE.MeshStandardMaterial({ map: texLaterite, bumpMap: texLaterite, bumpScale: 0.05, roughness: 0.92 }),
+            limeWall:        new THREE.MeshStandardMaterial({ color: 0xd2c9b8, roughness: 0.86 }),
+            agedBronze:      new THREE.MeshStandardMaterial({ color: 0xb88e44, roughness: 0.38, metalness: 0.62 }),
+            courtyardPaving: new THREE.MeshStandardMaterial({ map: texGraniteDark, roughness: 0.92, color: 0x56534d }),
+            highlight:       new THREE.MeshStandardMaterial({ color: 0xdfb45b, emissive: 0x422e06, roughness: 0.38 })
+        };
+
+        // Section-cutaway-aware materials (applied to roofs, upper storeys, walls & ceilings)
+        const clippableMats = [
+            mats.stoneSlabRoof, mats.copperRoof, mats.timberDark,
+            mats.timberLouver, mats.lateriteWall, mats.limeWall
+        ];
+
+        // ============================================================================
+        // SECTION 5: LAYER VISIBILITY & SECTION CUTAWAY CONTROLLER
+        // ============================================================================
+        window.updateVisibility = function () {
+            const cutSection = document.getElementById('toggle-section').checked;
+            clippableMats.forEach(m => {
+                m.clippingPlanes = cutSection ? [sectionPlane] : [];
+                m.needsUpdate = true;
+            });
+
+            layers.roofCoverings.visible         = document.getElementById('toggle-roofs').checked;
+            layers.upperTimberStoreys.visible    = document.getElementById('toggle-upper').checked;
+            layers.ceilingsAndBeams.visible      = document.getElementById('toggle-ceilings').checked;
+            layers.wallsAndEnclosures.visible    = document.getElementById('toggle-walls').checked;
+            layers.pillarsAndPlinths.visible     = document.getElementById('toggle-pillars').checked;
+            layers.courtyardAndManastambha.visible = document.getElementById('toggle-courtyard').checked;
+        };
+
+        window.resetAllLayers = function () {
+            document.getElementById('toggle-section').checked = false;
+            ['toggle-roofs', 'toggle-upper', 'toggle-ceilings', 'toggle-walls', 'toggle-pillars', 'toggle-courtyard'].forEach(id => {
+                document.getElementById(id).checked = true;
+            });
+            updateVisibility();
+        };
+
+        // ============================================================================
+        // SECTION 6: INTERACTIVE RAYCAST REGISTRY (LAYER-VISIBILITY AWARE)
+        // ============================================================================
+        const interactables = [];
+
+        function registerInteractive(object3D, layerGroup, metadata) {
+            object3D.updateMatrixWorld(true);
+            const bbox = new THREE.Box3().setFromObject(object3D);
+            const size = new THREE.Vector3();
+            const center = new THREE.Vector3();
+            bbox.getSize(size);
+            bbox.getCenter(center);
+
+            const hitGeo = new THREE.BoxGeometry(
+                Math.max(size.x, 1.6),
+                Math.max(size.y, 1.6),
+                Math.max(size.z, 1.6)
+            );
+            const hitMesh = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({ visible: false }));
+            hitMesh.position.copy(center);
+
+            const targetMeshes = [];
+            object3D.traverse(child => {
+                if (child.isMesh) {
+                    child.userData.origMat = child.material;
+                    targetMeshes.push(child);
+                }
+            });
+
+            hitMesh.userData = {
+                ...metadata,
+                layerGroup: layerGroup,
+                targetMeshes: targetMeshes
+            };
+
+            scene.add(hitMesh);
+            interactables.push(hitMesh);
+        }
+
+        // ============================================================================
+        // SECTION 7: REUSABLE ARCHITECTURAL GEOMETRY BUILDERS
+        // ============================================================================
+        // 7A. Open Hipped Roof with Rafters, Fascia & Local-Space Ridge Finials
+        function createOpenHippedRoof(wBottom, dBottom, wTop, dTop, height, mat = mats.copperRoof, addFinials = false) {
+            const group = new THREE.Group();
+
+            function makeSlopeQuad(p0, p1, p2, p3) {
+                const geo = new THREE.BufferGeometry();
+                const vertices = new Float32Array([
+                    p0.x, p0.y, p0.z,
+                    p1.x, p1.y, p1.z,
+                    p2.x, p2.y, p2.z,
+                    p3.x, p3.y, p3.z
+                ]);
+                geo.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
+                geo.setIndex([0, 1, 2, 0, 2, 3]);
+                geo.computeVertexNormals();
+                const m = new THREE.Mesh(geo, mat);
+                m.castShadow = true;
+                m.receiveShadow = true;
+                return m;
+            }
+
+            const hwB = wBottom / 2, hdB = dBottom / 2;
+            const hwT = wTop / 2, hdT = dTop / 2;
+
+            const bFL = new THREE.Vector3(-hwB, 0, hdB);
+            const bFR = new THREE.Vector3(hwB, 0, hdB);
+            const bBR = new THREE.Vector3(hwB, 0, -hdB);
+            const bBL = new THREE.Vector3(-hwB, 0, -hdB);
+
+            const tFL = new THREE.Vector3(-hwT, height, hdT);
+            const tFR = new THREE.Vector3(hwT, height, hdT);
+            const tBR = new THREE.Vector3(hwT, height, -hdT);
+            const tBL = new THREE.Vector3(-hwT, height, -hdT);
+
+            group.add(makeSlopeQuad(bFL, bFR, tFR, tFL)); // East / Front slope
+            group.add(makeSlopeQuad(bBR, bBL, tBL, tBR)); // West / Rear slope
+            group.add(makeSlopeQuad(bBL, bFL, tFL, tBL)); // South / Left slope
+            group.add(makeSlopeQuad(bFR, bBR, tBR, tFR)); // North / Right slope
+
+            if (wTop > 0.15 && dTop > 0.15) {
+                group.add(makeSlopeQuad(tFL, tFR, tBR, tBL));
+            }
+
+            // 4 Diagonal Hip Ridge Rolls
+            [[bFL, tFL], [bFR, tFR], [bBR, tBR], [bBL, tBL]].forEach(([s, e]) => {
+                const len = s.distanceTo(e);
+                const mid = s.clone().add(e).multiplyScalar(0.5);
+                const rMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, len, 8), mats.timberDark);
+                rMesh.position.copy(mid);
+                rMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), e.clone().sub(s).normalize());
+                group.add(rMesh);
+            });
+
+            // Exposed timber rafters along underside of long eaves
+            const rafterCount = Math.max(4, Math.floor(dBottom / 3.5));
+            for (let i = 0; i <= rafterCount; i++) {
+                const frac = i / rafterCount;
+                const zB = -hdB + frac * dBottom;
+                const zT = -hdT + frac * dTop;
+                [-1, 1].forEach(side => {
+                    const pStart = new THREE.Vector3(side * hwB, -0.06, zB);
+                    const pEnd   = new THREE.Vector3(side * hwT, height - 0.06, zT);
+                    const rLen   = pStart.distanceTo(pEnd);
+                    const rafter = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.20, rLen), mats.timberDark);
+                    rafter.position.copy(pStart).add(pEnd).multiplyScalar(0.5);
+                    rafter.lookAt(pEnd);
+                    group.add(rafter);
+                });
+            }
+
+            // Perimeter Timber Fascia Boards
+            const fH = 0.34;
+            const fFront = new THREE.Mesh(new THREE.BoxGeometry(wBottom + 0.2, fH, 0.16), mats.timberDark);
+            fFront.position.set(0, -fH / 2, hdB);
+            const fBack = fFront.clone();
+            fBack.position.z = -hdB;
+            const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.16, fH, dBottom + 0.2), mats.timberDark);
+            fLeft.position.set(-hwB, -fH / 2, 0);
+            const fRight = fLeft.clone();
+            fRight.position.x = hwB;
+            group.add(fFront, fBack, fLeft, fRight);
+
+            // Local-coordinate Stupika / Kalasha Finials along the top ridge
+            if (addFinials) {
+                const finialZOffsets = dTop > 10 ? [-dTop * 0.36, 0, dTop * 0.36] : [0];
+                finialZOffsets.forEach(fz => {
+                    const kalashaGroup = new THREE.Group();
+                    const baseRing = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.35, 12), mats.agedBronze);
+                    baseRing.position.y = 0.175;
+                    const pot = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), mats.agedBronze);
+                    pot.position.y = 0.62;
+                    const spire = new THREE.Mesh(new THREE.ConeGeometry(0.24, 1.15, 12), mats.agedBronze);
+                    spire.position.y = 1.45;
+                    kalashaGroup.add(baseRing, pot, spire);
+                    // Strictly local coordinates relative to this roof group
+                    kalashaGroup.position.set(0, height, fz);
+                    group.add(kalashaGroup);
+                });
+            }
+
+            return group;
+        }
+
+        // 7B. Sloped Monopitch Veranda Shed Skirt with Underside Rafter Ribs
+        function createVerandaShedSkirt(innerW, innerD, outerW, outerD, dropHeight, mat = mats.stoneSlabRoof, frontOpeningW = 0) {
+            const group = new THREE.Group();
+            const hiW = innerW / 2, hiD = innerD / 2;
+            const hoW = outerW / 2, hoD = outerD / 2;
+
+            function addSlopePanel(v0, v1, v2, v3) {
+                const geo = new THREE.BufferGeometry();
+                const verts = new Float32Array([
+                    v0.x, v0.y, v0.z, v1.x, v1.y, v1.z, v2.x, v2.y, v2.z, v3.x, v3.y, v3.z
+                ]);
+                geo.setAttribute('position', new THREE.BufferAttribute(verts, 3));
+                geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]), 2));
+                geo.setIndex([0, 1, 2, 0, 2, 3]);
+                geo.computeVertexNormals();
+                const m = new THREE.Mesh(geo, mat);
+                m.castShadow = true;
+                m.receiveShadow = true;
+                group.add(m);
+            }
+
+            // South (Left), North (Right), West (Rear)
+            addSlopePanel(
+                new THREE.Vector3(-hoW, -dropHeight, -hoD),
+                new THREE.Vector3(-hoW, -dropHeight, hoD),
+                new THREE.Vector3(-hiW, 0, hiD),
+                new THREE.Vector3(-hiW, 0, -hiD)
+            );
+            addSlopePanel(
+                new THREE.Vector3(hoW, -dropHeight, hoD),
+                new THREE.Vector3(hoW, -dropHeight, -hoD),
+                new THREE.Vector3(hiW, 0, -hiD),
+                new THREE.Vector3(hiW, 0, hiD)
+            );
+            addSlopePanel(
+                new THREE.Vector3(hoW, -dropHeight, -hoD),
+                new THREE.Vector3(-hoW, -dropHeight, -hoD),
+                new THREE.Vector3(-hiW, 0, -hiD),
+                new THREE.Vector3(hiW, 0, -hiD)
+            );
+
+            // East (Front) with optional axial entrance porch opening
+            if (frontOpeningW <= 0) {
+                addSlopePanel(
+                    new THREE.Vector3(-hoW, -dropHeight, hoD),
+                    new THREE.Vector3(hoW, -dropHeight, hoD),
+                    new THREE.Vector3(hiW, 0, hiD),
+                    new THREE.Vector3(-hiW, 0, hiD)
+                );
+            } else {
+                const halfGap = frontOpeningW / 2;
+                addSlopePanel(
+                    new THREE.Vector3(-hoW, -dropHeight, hoD),
+                    new THREE.Vector3(-halfGap, -dropHeight, hoD),
+                    new THREE.Vector3(-halfGap, 0, hiD),
+                    new THREE.Vector3(-hiW, 0, hiD)
+                );
+                addSlopePanel(
+                    new THREE.Vector3(halfGap, -dropHeight, hoD),
+                    new THREE.Vector3(hoW, -dropHeight, hoD),
+                    new THREE.Vector3(hiW, 0, hiD),
+                    new THREE.Vector3(halfGap, 0, hiD)
+                );
+            }
+
+            // Underside supporting ribs/rafters
+            const ribCount = Math.floor(outerD / 3.4);
+            for (let i = 0; i <= ribCount; i++) {
+                const t = i / ribCount;
+                const zIn = -hiD + t * innerD;
+                const zOut = -hoD + t * outerD;
+                [-1, 1].forEach(side => {
+                    const pIn = new THREE.Vector3(side * hiW, -0.07, zIn);
+                    const pOut = new THREE.Vector3(side * hoW, -dropHeight - 0.07, zOut);
+                    const len = pIn.distanceTo(pOut);
+                    const rib = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.22, len), mats.timberDark);
+                    rib.position.copy(pIn).add(pOut).multiplyScalar(0.5);
+                    rib.lookAt(pOut);
+                    group.add(rib);
+                });
+            }
+
+            return group;
+        }
+
+        // 7C. Open Structural Timber Storey Frame (Columns, Tie-Beams, Louvered Jali Screens & Eave Struts)
+        function createOpenTimberStorey(width, depth, height, centerY, centerZ, hasTopChaturmukhaDoors = false) {
+            const group = new THREE.Group();
+            const hw = width / 2;
+            const hd = depth / 2;
+
+            // Top and bottom horizontal timber ring-beams
+            const beamThickness = 0.42;
+            const bTopL = new THREE.Mesh(new THREE.BoxGeometry(beamThickness, beamThickness, depth), mats.timberDark);
+            bTopL.position.set(-hw, height - beamThickness / 2, 0);
+            const bTopR = bTopL.clone();
+            bTopR.position.x = hw;
+            const bTopF = new THREE.Mesh(new THREE.BoxGeometry(width, beamThickness, beamThickness), mats.timberDark);
+            bTopF.position.set(0, height - beamThickness / 2, hd);
+            const bTopB = bTopF.clone();
+            bTopB.position.z = -hd;
+            group.add(bTopL, bTopR, bTopF, bTopB);
+
+            // Recessed ventilated wooden louver wall panels (inset by 0.45 units so outer posts stand proud in 3D relief)
+            const coreW = width - 0.9;
+            const coreD = depth - 0.9;
+            const louverCore = new THREE.Mesh(new THREE.BoxGeometry(coreW, height - 0.4, coreD), mats.timberLouver);
+            louverCore.position.set(0, height / 2, 0);
+            louverCore.castShadow = true;
+            louverCore.receiveShadow = true;
+            group.add(louverCore);
+
+            // Perimeter structural timber posts + inclined eave strut brackets (Vyala/Salabhanjika braces)
+            const zBayStep = 5.5;
+            for (let z = -hd; z <= hd + 0.1; z += zBayStep) {
+                const clampedZ = Math.min(z, hd);
+                [-hw, hw].forEach(px => {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.44, height, 0.44), mats.timberDark);
+                    post.position.set(px, height / 2, clampedZ);
+                    group.add(post);
+
+                    // Inclined overhanging roof-eave strut
+                    const strut = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.26, 0.30), mats.timberDark);
+                    const dir = px > 0 ? 1 : -1;
+                    strut.position.set(px + dir * 0.72, height - 0.85, clampedZ);
+                    strut.rotation.z = dir * 0.58;
+                    group.add(strut);
+                });
+            }
+
+            const xBayStep = 5.5;
+            for (let x = -hw + xBayStep; x < hw; x += xBayStep) {
+                [-hd, hd].forEach(pz => {
+                    const post = new THREE.Mesh(new THREE.BoxGeometry(0.44, height, 0.44), mats.timberDark);
+                    post.position.set(x, height / 2, pz);
+                    group.add(post);
+                });
+            }
+
+            // If this is the uppermost Tritala storey over the sanctum, model the 4 axial Chaturmukha wooden doorways
+            if (hasTopChaturmukhaDoors) {
+                [
+                    [0, hd + 0.05, 0],
+                    [0, -hd - 0.05, Math.PI],
+                    [-hw - 0.05, 0, -Math.PI / 2],
+                    [hw + 0.05, 0, Math.PI / 2]
+                ].forEach(([dx, dz, rotY]) => {
+                    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(2.6, height * 0.78, 0.35), mats.timberDark);
+                    doorFrame.position.set(dx, height * 0.39, dz);
+                    doorFrame.rotation.y = rotY;
+                    group.add(doorFrame);
+                });
+            }
+
+            group.position.set(0, centerY, centerZ);
+            return group;
+        }
+
+        // 7D. Stepped Granite Adhishthana Plinth (Upana, Jagati, Kumuda, Kantha, Kapota)
+        function createMouldedPlinth(width, depth, height = 3.2) {
+            const group = new THREE.Group();
+            const courses = [
+                { w: width + 1.4, d: depth + 1.4, h: height * 0.20, y: height * 0.10, mat: mats.granitePlinth }, // Upana
+                { w: width + 0.8, d: depth + 0.8, h: height * 0.24, y: height * 0.32, mat: mats.granitePlinth }, // Jagati
+                { w: width + 1.1, d: depth + 1.1, h: height * 0.16, y: height * 0.52, mat: mats.graniteCarved }, // Kumuda
+                { w: width - 0.2, d: depth - 0.2, h: height * 0.22, y: height * 0.71, mat: mats.granitePlinth }, // Kantha
+                { w: width + 0.6, d: depth + 0.6, h: height * 0.18, y: height * 0.91, mat: mats.graniteCarved }  // Kapota
+            ];
+            courses.forEach(c => {
+                const m = new THREE.Mesh(new THREE.BoxGeometry(c.w, c.h, c.d), c.mat);
+                m.position.y = c.y;
+                m.castShadow = true;
+                m.receiveShadow = true;
+                group.add(m);
+            });
+            return group;
+        }
+
+        // ============================================================================
+        // SECTION 8: FIVE DOCUMENTED PILLAR FAMILIES (TOTAL HEIGHT = 7.4 UNITS)
+        // ============================================================================
+        const PILLAR_H = 7.4;
+
+        function createCruciformCorbel(span = 3.3, hasLotusDrops = true) {
+            const g = new THREE.Group();
+            const abacus = new THREE.Mesh(new THREE.BoxGeometry(1.72, 0.30, 1.72), mats.graniteCarved);
+            abacus.position.y = 0.15;
+            const armX = new THREE.Mesh(new THREE.BoxGeometry(span, 0.46, 0.84), mats.granitePillar);
+            armX.position.y = 0.66;
+            const armZ = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.46, span), mats.granitePillar);
+            armZ.position.y = 0.66;
+            const rollX = new THREE.Mesh(new THREE.BoxGeometry(span * 0.76, 0.26, 0.74), mats.graniteCarved);
+            rollX.position.y = 0.36;
+            const rollZ = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.26, span * 0.76), mats.graniteCarved);
+            rollZ.position.y = 0.36;
+            g.add(abacus, armX, armZ, rollX, rollZ);
+
+            if (hasLotusDrops) {
+                const tip = span * 0.41;
+                [[tip, 0], [-tip, 0], [0, tip], [0, -tip]].forEach(([px, pz]) => {
+                    const drop = new THREE.Mesh(new THREE.ConeGeometry(0.20, 0.38, 8), mats.graniteCarved);
+                    drop.rotation.x = Math.PI;
+                    drop.position.set(px, 0.24, pz);
+                    g.add(drop);
+                });
+            }
+            return g;
+        }
+
+        // Family 1: Bhairadevi Mandapa Composite Sculpted Pillar
+        function buildPillarFamily1() {
+            const g = new THREE.Group();
+            const b1 = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.4, 2.1), mats.graniteCarved); b1.position.y = 0.2;
+            const b2 = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.38, 1.85), mats.granitePillar); b2.position.y = 0.59;
+            const b3 = new THREE.Mesh(new THREE.BoxGeometry(1.98, 0.24, 1.98), mats.graniteCarved); b3.position.y = 0.90;
+            const b4 = new THREE.Mesh(new THREE.BoxGeometry(1.64, 0.30, 1.64), mats.granitePillar); b4.position.y = 1.17;
+            g.add(b1, b2, b3, b4);
+
+            // Lower Chaturasra (square carved block) with 4 attached corner colonnettes & relief frames
+            const sqLower = new THREE.Mesh(new THREE.BoxGeometry(1.44, 1.68, 1.44), mats.granitePillar);
+            sqLower.position.y = 2.16;
+            g.add(sqLower);
+
+            [[-0.70, -0.70], [0.70, -0.70], [0.70, 0.70], [-0.70, 0.70]].forEach(([cx, cz]) => {
+                const col = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 1.62, 8), mats.graniteCarved);
+                col.position.set(cx, 2.16, cz);
+                g.add(col);
+            });
+
+            for (let side = 0; side < 4; side++) {
+                const niche = new THREE.Group();
+                const frame = new THREE.Mesh(new THREE.BoxGeometry(0.82, 1.1, 0.14), mats.graniteCarved);
+                const arch = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.16, 10), mats.graniteCarved);
+                arch.rotation.x = Math.PI / 2;
+                arch.position.y = 0.42;
+                const relief = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.68, 0.18), mats.granitePolished);
+                relief.position.z = 0.04;
+                niche.add(frame, arch, relief);
+                const ang = side * (Math.PI / 2);
+                niche.position.set(Math.sin(ang) * 0.74, 2.16, Math.cos(ang) * 0.74);
+                niche.rotation.y = ang;
+                g.add(niche);
+            }
+
+            // Mid octagonal & 16-fluted sections
+            const midBelt = new THREE.Mesh(new THREE.BoxGeometry(1.68, 0.30, 1.68), mats.graniteCarved); midBelt.position.y = 3.15;
+            const oct = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.78, 0.72, 8), mats.granitePillar); oct.position.y = 3.66;
+            const fluted = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.68, 16), mats.granitePolished); fluted.position.y = 4.36;
+            const sqUpper = new THREE.Mesh(new THREE.BoxGeometry(1.34, 0.92, 1.34), mats.granitePillar); sqUpper.position.y = 5.16;
+            const topBelt = new THREE.Mesh(new THREE.BoxGeometry(1.56, 0.20, 1.56), mats.graniteCarved); topBelt.position.y = 5.72;
+            g.add(midBelt, oct, fluted, sqUpper, topBelt);
+
+            const lathePts = [
+                new THREE.Vector2(0.52, 0.0),
+                new THREE.Vector2(0.92, 0.22),
+                new THREE.Vector2(0.94, 0.36),
+                new THREE.Vector2(0.50, 0.50),
+                new THREE.Vector2(0.86, 0.64)
+            ];
+            const kumbha = new THREE.Mesh(new THREE.LatheGeometry(lathePts, 18), mats.granitePolished);
+            kumbha.position.y = 5.82;
+            g.add(kumbha);
+
+            const corbel = createCruciformCorbel(3.4, true);
+            corbel.position.y = 6.46;
+            g.add(corbel);
+
+            g.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            return g;
+        }
+
+        // Family 2: Chitradevi & Namaskara Mandapa Turned Lathed (Srikara) Pillar
+        function buildPillarFamily2() {
+            const g = new THREE.Group();
+            const b1 = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.42, 1.9), mats.graniteCarved); b1.position.y = 0.21;
+            const b2 = new THREE.Mesh(new THREE.BoxGeometry(1.56, 1.15, 1.56), mats.granitePillar); b2.position.y = 1.0;
+            const b3 = new THREE.Mesh(new THREE.BoxGeometry(1.74, 0.24, 1.74), mats.graniteCarved); b3.position.y = 1.70;
+            g.add(b1, b2, b3);
+
+            const profile = [
+                [0.74, 0.0], [0.74, 0.34],
+                [0.60, 0.50], [0.86, 0.84], [0.86, 1.14], [0.56, 1.34],
+                [0.94, 1.54], [0.56, 1.74],
+                [0.70, 1.94], [0.70, 2.54],
+                [0.90, 2.70], [0.90, 2.84], [0.54, 3.00],
+                [0.66, 3.20], [0.66, 3.64],
+                [0.46, 3.80], [0.95, 4.04], [0.95, 4.22],
+                [0.50, 4.38], [0.88, 4.62]
+            ].map(([r, y]) => new THREE.Vector2(r, y));
+
+            const shaft = new THREE.Mesh(new THREE.LatheGeometry(profile, 22), mats.granitePolished);
+            shaft.position.y = 1.82;
+            g.add(shaft);
+
+            const corbel = createCruciformCorbel(3.15, true);
+            corbel.position.y = 6.46;
+            g.add(corbel);
+
+            g.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            return g;
+        }
+
+        // Family 3: Gaddige Dais Slender Faceted Pillar
+        function buildPillarFamily3() {
+            const g = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.35, 1.4), mats.graniteCarved);
+            base.position.y = 0.675;
+            const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.50, 0.56, 4.85, 12), mats.granitePolished);
+            shaft.position.y = 3.77;
+            g.add(base, shaft);
+
+            [2.4, 3.8, 5.1].forEach(ry => {
+                const ring = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.08, 8, 16), mats.graniteCarved);
+                ring.rotation.x = Math.PI / 2;
+                ring.position.y = ry;
+                g.add(ring);
+            });
+
+            const corbel = createCruciformCorbel(2.75, true);
+            corbel.position.y = 6.46;
+            g.add(corbel);
+
+            g.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            return g;
+        }
+
+        // Family 4: Inner Navaranga (Tirthankara & Lakshmi Mandapa) Octagonal-Cubic Pillar
+        function buildPillarFamily4() {
+            const g = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(1.72, 1.75, 1.72), mats.granitePillar); base.position.y = 0.875;
+            const oct1 = new THREE.Mesh(new THREE.CylinderGeometry(0.70, 0.70, 1.62, 8), mats.granitePillar); oct1.position.y = 2.56;
+            const cube = new THREE.Mesh(new THREE.BoxGeometry(1.38, 0.84, 1.38), mats.graniteCarved); cube.position.y = 3.79;
+            const hex  = new THREE.Mesh(new THREE.CylinderGeometry(0.66, 0.66, 1.68, 16), mats.granitePillar); hex.position.y = 5.05;
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.84, 0.60, 0.56, 12), mats.graniteCarved); neck.position.y = 6.17;
+            const corbel = createCruciformCorbel(2.95, false); corbel.position.y = 6.46;
+            g.add(base, oct1, cube, hex, neck, corbel);
+
+            g.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            return g;
+        }
+
+        // Family 5: Outer Perimeter Colonnade Heavy Granite Pillar
+        function buildPillarFamily5() {
+            const g = new THREE.Group();
+            const base = new THREE.Mesh(new THREE.BoxGeometry(1.62, 1.85, 1.62), mats.granitePlinth); base.position.y = 0.925;
+            const oct1 = new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.67, 1.82, 8), mats.granitePillar); oct1.position.y = 2.76;
+            const mid  = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.74, 1.28), mats.graniteCarved); mid.position.y = 4.04;
+            const oct2 = new THREE.Mesh(new THREE.CylinderGeometry(0.63, 0.65, 1.98, 8), mats.granitePillar); oct2.position.y = 5.40;
+            const cap  = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.34, 1.48), mats.graniteCarved); cap.position.y = 6.56;
+            const bracket = new THREE.Mesh(new THREE.BoxGeometry(2.55, 0.66, 1.12), mats.granitePlinth); bracket.position.y = 7.06;
+            g.add(base, oct1, mid, oct2, cap, bracket);
+
+            g.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            return g;
+        }
+
+        const pillarPrototypes = {
+            1: buildPillarFamily1(),
+            2: buildPillarFamily2(),
+            3: buildPillarFamily3(),
+            4: buildPillarFamily4(),
+            5: buildPillarFamily5()
+        };
+
+        function placePillar(x, yBase, z, familyId, rotY = 0) {
+            const p = pillarPrototypes[familyId].clone();
+            p.position.set(x, yBase, z);
+            p.rotation.y = rotY;
+            layers.pillarsAndPlinths.add(p);
+            return p;
+        }
+
+        // ============================================================================
+        // SECTION 9: COFFERED CEILINGS, BEAMS & ROTATED VITANA LOTUS MEDALLIONS
+        // ============================================================================
+        function createVitanaLotusMedallion(radius = 2.9) {
+            const g = new THREE.Group();
+            const sq1 = new THREE.Mesh(new THREE.BoxGeometry(radius * 1.6, 0.24, radius * 1.6), mats.graniteCarved);
+            sq1.position.y = -0.12;
+            const sq2 = new THREE.Mesh(new THREE.BoxGeometry(radius * 1.32, 0.26, radius * 1.32), mats.granitePillar);
+            sq2.rotation.y = Math.PI / 4;
+            sq2.position.y = -0.32;
+            const r1 = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.78, radius * 0.68, 0.24, 16), mats.graniteCarved);
+            r1.position.y = -0.52;
+            const r2 = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.48, radius * 0.36, 0.26, 12), mats.granitePolished);
+            r2.position.y = -0.72;
+            const drop = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.20, 0.88, 12), mats.graniteCarved);
+            drop.rotation.x = Math.PI;
+            drop.position.y = -1.02;
+            g.add(sq1, sq2, r1, r2, drop);
+            return g;
+        }
+
+        function buildCeilingGrid(xCoords, zCoords, yTop, hallW, hallD, centerZ, addCentralMedallion = true) {
+            const g = new THREE.Group();
+            const bH = 0.62, bW = 0.82;
+
+            xCoords.forEach(x => {
+                const b = new THREE.Mesh(new THREE.BoxGeometry(bW, bH, hallD), mats.granitePlinth);
+                b.position.set(x, yTop - bH / 2, centerZ);
+                b.castShadow = true;
+                b.receiveShadow = true;
+                g.add(b);
+            });
+
+            zCoords.forEach(z => {
+                const b = new THREE.Mesh(new THREE.BoxGeometry(hallW, bH, bW), mats.granitePlinth);
+                b.position.set(0, yTop - bH / 2, z);
+                b.castShadow = true;
+                b.receiveShadow = true;
+                g.add(b);
+            });
+
+            const slab = new THREE.Mesh(new THREE.BoxGeometry(hallW + 1.0, 0.32, hallD + 1.0), mats.granitePlinth);
+            slab.position.set(0, yTop + 0.16, centerZ);
+            slab.receiveShadow = true;
+            g.add(slab);
+
+            if (addCentralMedallion) {
+                const med = createVitanaLotusMedallion(2.85);
+                med.position.set(0, yTop - 0.04, centerZ);
+                g.add(med);
+            }
+
+            layers.ceilingsAndBeams.add(g);
+            return g;
+        }
+
+        // ============================================================================
+        // SECTION 10: MASTER TEMPLE ASSEMBLY (EAST-TO-WEST LONGITUDINAL SEQUENCE)
+        // ============================================================================
+        const PLINTH_H = 3.2;
+        const CEILING_Y = PLINTH_H + PILLAR_H; // 10.6
+
+        // 10A. Courtyard Ground, Flagstones & Outer Prakara Enclosure Wall
+        function buildCourtyardAndPrakara() {
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(650, 650),
+                new THREE.MeshStandardMaterial({ color: 0x191b18, roughness: 0.98 })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const paving = new THREE.Mesh(new THREE.BoxGeometry(108, 0.24, 232), mats.courtyardPaving);
+            paving.position.set(0, 0.12, 8);
+            paving.receiveShadow = true;
+            layers.courtyardAndManastambha.add(paving);
+
+            // Outer laterite Prakara enclosure walls (properly assigned to wallsAndEnclosures layer)
+            const prakaraL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 3.4, 218), mats.lateriteWall);
+            prakaraL.position.set(-51, 1.7, 5);
+            const prakaraR = prakaraL.clone();
+            prakaraR.position.x = 51;
+            const prakaraBack = new THREE.Mesh(new THREE.BoxGeometry(103, 3.4, 1.2), mats.lateriteWall);
+            prakaraBack.position.set(0, 1.7, -104);
+            layers.wallsAndEnclosures.add(prakaraL, prakaraR, prakaraBack);
+        }
+
+        // 10B. Monolithic Manastambha (Z = +94, Erected 1462 CE by Nagaladevi)
+        function buildManastambha() {
+            const g = new THREE.Group();
+            const zPos = 94;
+            g.position.set(0, 0, zPos);
+
+            // 4-tier stepped granite pedestal
+            [
+                { w: 12.2, h: 1.05, y: 0.525 },
+                { w: 9.6,  h: 0.95, y: 1.525 },
+                { w: 7.2,  h: 0.95, y: 2.475 },
+                { w: 5.0,  h: 1.25, y: 3.575 }
+            ].forEach(t => {
+                const step = new THREE.Mesh(new THREE.BoxGeometry(t.w, t.h, t.w), mats.granitePlinth);
+                step.position.y = t.y;
+                step.castShadow = true;
+                step.receiveShadow = true;
+                g.add(step);
+            });
+
+            // Sculpted square base register (Brahma-kanta)
+            const baseBlock = new THREE.Mesh(new THREE.BoxGeometry(2.45, 2.7, 2.45), mats.graniteCarved);
+            baseBlock.position.y = 5.55;
+            g.add(baseBlock);
+
+            // Tapering monolithic shaft with moulded rings & double lotus capital
+            const shaftPts = [
+                [1.04, 0.0], [0.95, 2.5], [0.88, 8.0],
+                [0.98, 8.3], [0.85, 8.6],
+                [0.78, 14.2], [0.90, 14.5], [0.75, 14.8],
+                [0.70, 17.8],
+                [0.54, 18.2], [1.14, 18.8], [1.18, 19.2], [0.64, 19.6],
+                [1.38, 20.3], [1.48, 20.6]
+            ].map(([r, y]) => new THREE.Vector2(r, y));
+
+            const shaft = new THREE.Mesh(new THREE.LatheGeometry(shaftPts, 24), mats.granitePolished);
+            shaft.position.y = 6.9;
+            shaft.castShadow = true;
+            g.add(shaft);
+
+            const cap1 = new THREE.Mesh(new THREE.BoxGeometry(3.25, 0.42, 3.25), mats.graniteCarved);
+            cap1.position.y = 27.7;
+            const cap2 = new THREE.Mesh(new THREE.BoxGeometry(2.65, 0.38, 2.65), mats.granitePillar);
+            cap2.position.y = 28.1;
+            g.add(cap1, cap2);
+
+            // Summit 4-pillared Chaturmukha pavilion
+            [[-0.9, -0.9], [0.9, -0.9], [0.9, 0.9], [-0.9, 0.9]].forEach(([cx, cz]) => {
+                const col = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 2.1, 8), mats.graniteCarved);
+                col.position.set(cx, 29.35, cz);
+                g.add(col);
+            });
+            const shrineCore = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.3, 0.7), mats.agedBronze);
+            shrineCore.position.y = 29.0;
+            g.add(shrineCore);
+
+            const pavRoof = createOpenHippedRoof(3.6, 3.6, 0.25, 0.25, 1.9, mats.copperRoof, true);
+            pavRoof.position.y = 30.4;
+            g.add(pavRoof);
+
+            layers.courtyardAndManastambha.add(g);
+
+            registerInteractive(g, layers.courtyardAndManastambha, {
+                title: "Monolithic Manastambha (1462 CE)",
+                confidence: "Verified Photographic Reference (~50 ft / 15.2 m height)",
+                phase: "Phase 3 (1462 CE) — Commissioned by Queen Nagaladevi",
+                evidence: "Wikimedia Commons & Karnataka Tourism photographs show a 4-stage stepped platform, square relief base, multi-ringed monolithic granite shaft, and summit Chaturmukha pavilion.",
+                desc: "Standing on the main eastern approach axis ahead of the Bhairadevi Mandapa, this single-stone pillar signifies the shedding of pride (mana) before entering the temple precincts."
+            });
+        }
+
+        // 10C. Detached Bhairadevi Mandapa (Z = +32 to +68, Built 1462 CE)
+        function buildBhairadeviMandapa() {
+            const centerZ = 50;
+            const width = 42;
+            const depth = 36;
+
+            const plinth = createMouldedPlinth(width, depth, PLINTH_H);
+            plinth.position.set(0, 0, centerZ);
+            layers.pillarsAndPlinths.add(plinth);
+
+            // East & West Flights of Steps (Z = +68 and Z = +32 facing the courtyard gap)
+            [
+                [centerZ + depth / 2, 1],
+                [centerZ - depth / 2, -1]
+            ].forEach(([zEdge, dirZ]) => {
+                for (let s = 0; s < 5; s++) {
+                    const step = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.64, 3.5 - s * 0.58), mats.granitePlinth);
+                    step.position.set(0, 0.32 + s * 0.64, zEdge + dirZ * (1.75 - s * 0.29));
+                    layers.pillarsAndPlinths.add(step);
+                }
+                [-3.9, 3.9].forEach(bx => {
+                    const bal = new THREE.Mesh(new THREE.BoxGeometry(0.62, 3.5, 3.6), mats.graniteCarved);
+                    bal.position.set(bx, 1.75, zEdge + dirZ * 1.55);
+                    layers.pillarsAndPlinths.add(bal);
+                });
+            });
+
+            // Low Carved Stone Parapet Bench (Kakshaputa) along North & South sides (assigned to walls layer)
+            const parapetH = 1.2;
+            const pSouth = new THREE.Mesh(new THREE.BoxGeometry(1.05, parapetH, depth - 1.2), mats.graniteCarved);
+            pSouth.position.set(-width / 2 + 0.52, PLINTH_H + parapetH / 2, centerZ);
+            const pNorth = pSouth.clone();
+            pNorth.position.x = width / 2 - 0.52;
+            layers.wallsAndEnclosures.add(pSouth, pNorth);
+
+            // 6 x 6 Column Grid: Outer ring = Family 5, Inner 16 columns = Family 1 (Ornate Composite)
+            const xGrid = [-18.5, -11.5, -4.5, 4.5, 11.5, 18.5];
+            const zGrid = [34.5, 40.5, 46.5, 53.5, 59.5, 65.5];
+            let repPillar = null;
+
+            xGrid.forEach((x, xi) => {
+                zGrid.forEach((z, zi) => {
+                    const isOuter = (xi === 0 || xi === xGrid.length - 1 || zi === 0 || zi === zGrid.length - 1);
+                    const p = placePillar(x, PLINTH_H, z, isOuter ? 5 : 1);
+                    if (xi === 2 && zi === 3) repPillar = p;
+                });
+            });
+
+            if (repPillar) {
+                registerInteractive(repPillar, layers.pillarsAndPlinths, {
+                    title: "Bhairadevi Mandapa Ornate Composite Pillar (Family 1)",
+                    confidence: "Verified Reference Proportions & Relief Register Sequence",
+                    phase: "Phase 3 (1462 CE) — Queen Bhairadevi Patronage",
+                    evidence: "Close-up photographs in Wikimedia Commons ('Pillars at Saavira Kambada Basadi') show stepped bases, square chaturasra blocks with corner colonnettes, 16-fluted drums, and 4-way drooping lotus corbels.",
+                    desc: "These central columns are the most elaborately sculpted in the complex. Individual narrative motifs are represented via restrained 3D architectural niches and geometric relief rather than fabricated fantasy meshes.",
+                    camPos: [-1.2, 6.8, 58.5],
+                    targetPos: [-4.5, 6.8, 53.5]
+                });
+            }
+
+            // Coffered Ceiling Grid & Central Lotus Medallion
+            const bhairaCeiling = buildCeilingGrid(xGrid, zGrid, CEILING_Y, width - 2, depth - 2, centerZ, true);
+            registerInteractive(bhairaCeiling, layers.ceilingsAndBeams, {
+                title: "Bhairadevi Mandapa Coffered Ceiling (Vitana)",
+                confidence: "Verified Photographic Reference",
+                phase: "Phase 3 (1462 CE)",
+                evidence: "Interior ceiling photographs show rotated square stone rings (vitana) culminating in a concentric lotus pendant (padma-shila).",
+                desc: "Supported by heavy granite lintels spanning the cruciform brackets. Uncheck 'Show Sloped Roof Coverings' in the top-right panel to inspect the ceiling structure from above.",
+                camPos: [0, 5.6, 61],
+                targetPos: [0, 10.2, 50]
+            });
+
+            // Open Timber Clerestory Frame above Bhairadevi Mandapa
+            const bhairaTimber = createOpenTimberStorey(width - 11, depth - 11, 2.7, CEILING_Y + 0.3, centerZ, false);
+            layers.upperTimberStoreys.add(bhairaTimber);
+
+            // Roof Assembly over Bhairadevi Mandapa
+            const bhairaRoofGroup = new THREE.Group();
+            const lowerEaves = createVerandaShedSkirt(width - 11, depth - 11, width + 5.2, depth + 5.2, 2.2, mats.stoneSlabRoof, 9.5);
+            lowerEaves.position.set(0, CEILING_Y + 1.5, centerZ);
+
+            const upperHip = createOpenHippedRoof(width - 6.5, depth - 6.5, 9.5, 5.5, 5.0, mats.copperRoof, true);
+            upperHip.position.set(0, CEILING_Y + 3.0, centerZ);
+
+            // Carved Timber Front Gable (Mukhapatti) projecting over East entrance
+            const gShape = new THREE.Shape();
+            gShape.moveTo(-5.8, 0);
+            gShape.lineTo(5.8, 0);
+            gShape.lineTo(0, 4.5);
+            gShape.closePath();
+            const gableMesh = new THREE.Mesh(
+                new THREE.ExtrudeGeometry(gShape, { depth: 2.0, bevelEnabled: true, bevelSize: 0.12, bevelThickness: 0.12 }),
+                mats.timberLouver
+            );
+            gableMesh.position.set(0, CEILING_Y + 0.3, centerZ + depth / 2 - 0.4);
+            bhairaRoofGroup.add(lowerEaves, upperHip, gableMesh);
+            layers.roofCoverings.add(bhairaRoofGroup);
+
+            registerInteractive(plinth, layers.pillarsAndPlinths, {
+                title: "Detached Bhairadevi Mandapa & Courtyard Separation",
+                confidence: "Verified Architectural Layout",
+                phase: "Phase 3 (1462 CE)",
+                evidence: "Exterior side elevations confirm the Bhairadevi Mandapa is an independent open pavilion separated from the main temple body by a paved open-air passage (Z = +26 to +32).",
+                desc: "Built on a moulded granite Adhishthana plinth with low perimeter kakshaputa seating benches, this 36-pillar pavilion serves as the ceremonial forehall.",
+                camPos: [-44, 18, 52],
+                targetPos: [0, 7, 50]
+            });
+        }
+
+        // 10D. Main Temple Body (Z = +26 to -88: Chitradevi, Namaskara/Gaddige, Tirthankara, Lakshmi, Sukanasi & Garbhagriha)
+        function buildMainTempleComplex() {
+            const totalDepth = 114; // Z = +26 to -88
+            const centerZ = -31;
+            const outerWidth = 52;
+
+            // 1. Main Moulded Granite Plinth & Entrance Steps from Courtyard Passage
+            const mainPlinth = createMouldedPlinth(outerWidth, totalDepth, PLINTH_H);
+            mainPlinth.position.set(0, 0, centerZ);
+            layers.pillarsAndPlinths.add(mainPlinth);
+
+            for (let s = 0; s < 4; s++) {
+                const st = new THREE.Mesh(new THREE.BoxGeometry(8.4, 0.8, 3.8 - s * 0.75), mats.granitePlinth);
+                st.position.set(0, 0.4 + s * 0.8, 26 + (1.9 - s * 0.375));
+                layers.pillarsAndPlinths.add(st);
+            }
+
+            // 2. Outer Perimeter Veranda Colonnade (Family 5 Pillars)
+            const perimZ = [];
+            for (let z = 24; z >= -86; z -= 6.875) perimZ.push(z);
+            const perimX = [-24, -16, -8, 8, 16, 24];
+
+            perimZ.forEach(z => {
+                placePillar(-24, PLINTH_H, z, 5);
+                placePillar(24, PLINTH_H, z, 5);
+            });
+            perimX.forEach(x => {
+                if (Math.abs(x) !== 24) {
+                    placePillar(x, PLINTH_H, 24, 5, Math.PI / 2);
+                    placePillar(x, PLINTH_H, -86, 5, Math.PI / 2);
+                }
+            });
+
+            // Sloped Monolithic Granite Slab Roof (Kapota Eaves) over Outer Veranda Colonnade
+            const verandaStoneRoof = createVerandaShedSkirt(35.5, 98, 56.5, 118.5, 2.45, mats.stoneSlabRoof, 10.5);
+            verandaStoneRoof.position.set(0, CEILING_Y + 0.35, centerZ);
+            layers.roofCoverings.add(verandaStoneRoof);
+
+            registerInteractive(verandaStoneRoof, layers.roofCoverings, {
+                title: "Outer Veranda Colonnade & Sloped Granite Slab Roof",
+                confidence: "Verified Photographic Evidence",
+                phase: "Tulu Nadu Coastal Monsoon Architecture",
+                evidence: "Side colonnade photographs show heavy chamfered granite pillars supporting steeply pitched dressed granite roof slabs with raised interlocking roll joints.",
+                desc: "Protects the inner sanctum and mandapa walls from heavy Southwest monsoon rainfall while creating a shaded circumambulatory veranda around the entire monument.",
+                camPos: [-46, 13, -8],
+                targetPos: [-24, 9, -8]
+            });
+
+            // 3. Inner Enclosure & Partition Walls (All assigned to layers.wallsAndEnclosures!)
+            const wallH = PILLAR_H;
+            const wallY = PLINTH_H + wallH / 2;
+
+            // Side enclosure walls flanking Tirthankara, Lakshmi & Sanctum halls (Z = -22 to -82)
+            const coreWallL = new THREE.Mesh(new THREE.BoxGeometry(1.05, wallH, 60), mats.limeWall);
+            coreWallL.position.set(-17.5, wallY, -52);
+            const coreWallR = coreWallL.clone();
+            coreWallR.position.x = 17.5;
+            const coreWallRear = new THREE.Mesh(new THREE.BoxGeometry(36, wallH, 1.05), mats.limeWall);
+            coreWallRear.position.set(0, wallY, -82);
+
+            for (let z = -24; z >= -80; z -= 8) {
+                [-18.05, 18.05].forEach(px => {
+                    const pilaster = new THREE.Mesh(new THREE.BoxGeometry(0.42, wallH, 0.82), mats.graniteCarved);
+                    pilaster.position.set(px, wallY, z);
+                    layers.wallsAndEnclosures.add(pilaster);
+                });
+            }
+
+            // Partition wall & carved doorway at Z = -22 (between Namaskara Mandapa and Tirthankara Mandapa)
+            const partL = new THREE.Mesh(new THREE.BoxGeometry(13.2, wallH, 1.05), mats.graniteCarved);
+            partL.position.set(-10.8, wallY, -22);
+            const partR = partL.clone();
+            partR.position.x = 10.8;
+            const partLintel = new THREE.Mesh(new THREE.BoxGeometry(8.4, 1.75, 1.35), mats.graniteCarved);
+            partLintel.position.set(0, PLINTH_H + wallH - 0.88, -22);
+
+            layers.wallsAndEnclosures.add(coreWallL, coreWallR, coreWallRear, partL, partR, partLintel);
+
+            // 4. Hall 2: Chitradevi Mandapa (Z = +20 to +4, Built 1451 CE)
+            const chitraX = [-14, -5.5, 5.5, 14];
+            const chitraZ = [20, 12, 4];
+            let repLathedPillar = null;
+            chitraX.forEach((x, xi) => {
+                chitraZ.forEach((z, zi) => {
+                    const p = placePillar(x, PLINTH_H, z, 2);
+                    if (xi === 1 && zi === 1) repLathedPillar = p;
+                });
+            });
+            buildCeilingGrid(chitraX, chitraZ, CEILING_Y, 34, 20, 12, true);
+
+            if (repLathedPillar) {
+                registerInteractive(repLathedPillar, layers.pillarsAndPlinths, {
+                    title: "Chitradevi Mandapa & Turned Srikara Pillars (Family 2)",
+                    confidence: "Verified Photographic Evidence",
+                    phase: "Phase 2 (1451 CE) — Commissioned by Queen Chitradevi",
+                    evidence: "Interior photographs show dark polished granite columns with lathe-turned bell (kalasha), cushion (kumbha), and sharp knife-edge (kani) mouldings.",
+                    desc: "Forms the entry hall of the main temple structure immediately behind the open courtyard passage.",
+                    camPos: [0, 6.8, 25],
+                    targetPos: [-5.5, 6.8, 12]
+                });
+            }
+
+            // 5. Hall 3: Namaskara / Gaddige Mandapa (Z = +4 to -22, Built 1451 CE)
+            const namasX = [-14, -6, 6, 14];
+            const namasZ = [-2, -9, -16, -22];
+            namasX.forEach(x => {
+                namasZ.forEach(z => {
+                    if (Math.abs(x) === 6 && (z === -9 || z === -16)) return;
+                    placePillar(x, PLINTH_H, z, 2);
+                });
+            });
+
+            const gaddigeGroup = new THREE.Group();
+            const dais = new THREE.Mesh(new THREE.BoxGeometry(9.4, 0.82, 9.4), mats.granitePolished);
+            dais.position.set(0, PLINTH_H + 0.41, -10.5);
+            gaddigeGroup.add(dais);
+
+            [[-4.1, -6.4], [4.1, -6.4], [4.1, -14.6], [-4.1, -14.6]].forEach(([gx, gz]) => {
+                const gp = pillarPrototypes[3].clone();
+                gp.scale.set(1, (PILLAR_H - 0.82) / PILLAR_H, 1);
+                gp.position.set(gx, PLINTH_H + 0.82, gz);
+                gaddigeGroup.add(gp);
+            });
+            layers.pillarsAndPlinths.add(gaddigeGroup);
+            buildCeilingGrid(namasX, namasZ, CEILING_Y, 34, 24, -10, true);
+
+            registerInteractive(gaddigeGroup, layers.pillarsAndPlinths, {
+                title: "Namaskara (Gaddige) Mandapa & Ritual Dais (1451 CE)",
+                confidence: "Documented Interior Feature",
+                phase: "Phase 2 (1451 CE) — Moodbidri Merchant Guilds (Settikars)",
+                evidence: "Architectural descriptions document the raised central Gaddige platform framed by slender faceted columns beneath a carved lotus ceiling bay.",
+                desc: "Positioned at the liturgical heart of the outer halls for ceremonial prostration and discourse.",
+                camPos: [9.5, 7.0, 1.5],
+                targetPos: [0, 6.4, -10.5]
+            });
+
+            // 6. Hall 4 & 5: Tirthankara Mandapa (Z = -22 to -44) & Lakshmi Mandapa (Z = -44 to -62)
+            const innerX = [-12, -4.8, 4.8, 12];
+            [-28, -35, -42, -49, -56, -62].forEach(z => {
+                innerX.forEach(x => placePillar(x, PLINTH_H, z, 4));
+            });
+            buildCeilingGrid(innerX, [-28, -35, -42], CEILING_Y, 33, 22, -33, true);
+            buildCeilingGrid(innerX, [-49, -56, -62], CEILING_Y, 33, 18, -53, true);
+
+            // 7. Hall 6 & 7: Sukanasi & Garbhagriha (Z = -62 to -78, Built 1430 CE)
+            // Walls of the Sanctum are placed in layers.wallsAndEnclosures so 'Show Walls' hides them cleanly;
+            // Sacred Idol & Pedestal are placed in layers.interiorSacredDetails so they remain visible when walls are hidden!
+            const sancW = 12.4, sancD = 14.4, sancZ = -70.5;
+            const sukanasiL = new THREE.Mesh(new THREE.BoxGeometry(3.8, wallH, 2.4), mats.graniteCarved);
+            sukanasiL.position.set(-4.3, wallY, -62.5);
+            const sukanasiR = sukanasiL.clone();
+            sukanasiR.position.x = 4.3;
+            const sukanasiLintel = new THREE.Mesh(new THREE.BoxGeometry(12.4, 2.1, 2.6), mats.graniteCarved);
+            sukanasiLintel.position.set(0, PLINTH_H + wallH - 1.05, -62.5);
+
+            const sWallL = new THREE.Mesh(new THREE.BoxGeometry(1.15, wallH, sancD), mats.granitePlinth);
+            sWallL.position.set(-sancW / 2, wallY, sancZ);
+            const sWallR = sWallL.clone();
+            sWallR.position.x = sancW / 2;
+            const sWallB = new THREE.Mesh(new THREE.BoxGeometry(sancW + 1.15, wallH, 1.15), mats.granitePlinth);
+            sWallB.position.set(0, wallY, sancZ - sancD / 2);
+
+            layers.wallsAndEnclosures.add(sukanasiL, sukanasiR, sukanasiLintel, sWallL, sWallR, sWallB);
+
+            // Sacred Idol of 8th Tirthankara Chandranatha Swami inside Garbhagriha
+            const shrineGroup = new THREE.Group();
+            const idolPedestal = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.35, 2.5), mats.granitePolished);
+            idolPedestal.position.set(0, PLINTH_H + 0.675, -72.5);
+            const prabhavali = new THREE.Mesh(new THREE.TorusGeometry(2.05, 0.16, 10, 24, Math.PI), mats.agedBronze);
+            prabhavali.position.set(0, PLINTH_H + 3.3, -73.0);
+            const idolTorso = new THREE.Mesh(new THREE.CylinderGeometry(0.40, 0.52, 3.5, 16), mats.agedBronze);
+            idolTorso.position.set(0, PLINTH_H + 3.1, -72.5);
+            const idolHead = new THREE.Mesh(new THREE.SphereGeometry(0.42, 16, 16), mats.agedBronze);
+            idolHead.position.set(0, PLINTH_H + 5.1, -72.5);
+            shrineGroup.add(idolPedestal, prabhavali, idolTorso, idolHead);
+            layers.interiorSacredDetails.add(shrineGroup);
+
+            registerInteractive(shrineGroup, layers.interiorSacredDetails, {
+                title: "Garbhagriha & 8-ft Chandranatha Swami Idol (1430 CE)",
+                confidence: "Documented Historical Core",
+                phase: "Phase 1 (1430 CE) — Founded under Devaraya Wodeyar",
+                evidence: "Historical records & Karnataka Tourism documentation confirm the sanctum houses an 8-foot panchaloha (five-metal) statue of the 8th Jain Tirthankara, Chandraprabha.",
+                desc: "Surrounded by an inner circumambulatory passage (Pradakshinapatha). Toggle off 'Show Sanctum & Enclosure Walls' to inspect the sanctum interior unobstructed.",
+                camPos: [0, 6.8, -48],
+                targetPos: [0, 6.5, -72.5]
+            });
+
+            // 8. Upper Open-Framed Timber Storeys (Dvitala & Tritala) & Layered Copper Roofs
+            const dvitalaH = 4.5;
+            const dvitalaY = CEILING_Y + 0.32;
+            const dvitalaFrame = createOpenTimberStorey(33.5, 98, dvitalaH, dvitalaY, -30, false);
+            layers.upperTimberStoreys.add(dvitalaFrame);
+
+            const dvitalaSkirt = createVerandaShedSkirt(21.5, 44, 41, 106, 3.0, mats.copperRoof, 0);
+            dvitalaSkirt.position.set(0, dvitalaY + dvitalaH + 0.9, -30);
+            const frontUpperHip = createOpenHippedRoof(39.5, 52, 7.5, 27, 4.6, mats.copperRoof, true);
+            frontUpperHip.position.set(0, dvitalaY + dvitalaH, -4);
+            layers.roofCoverings.add(dvitalaSkirt, frontUpperHip);
+
+            // Third Storey (Tritala) over the Sacred Core (Lakshmi Mandapa & Garbhagriha, Z = -39 to -81)
+            const tritalaH = 4.3;
+            const tritalaY = dvitalaY + dvitalaH;
+            const tritalaFrame = createOpenTimberStorey(21.5, 42, tritalaH, tritalaY, -60, true);
+            layers.upperTimberStoreys.add(tritalaFrame);
+
+            // Highest Copper Hipped Roof with properly positioned Local-Space Stupika Finials
+            const topSanctumRoof = createOpenHippedRoof(28.5, 48.5, 3.2, 18, 6.0, mats.copperRoof, true);
+            topSanctumRoof.position.set(0, tritalaY + tritalaH, -60);
+            layers.roofCoverings.add(topSanctumRoof);
+
+            registerInteractive(topSanctumRoof, layers.roofCoverings, {
+                title: "Three-Storey Hybrid Stone, Timber & Copper Superstructure",
+                confidence: "Verified Exterior Silhouette & Material Hierarchy",
+                phase: "Coastal Karnataka Multi-Storey Basadi Typology",
+                evidence: "Three-quarter exterior photographs show a stone colonnaded ground level surmounted by two stepped timber-framed storeys with louvered screens, angled struts, and standing-seam copper roofs.",
+                desc: "The uppermost timber level above the sanctum houses the four-door Chaturmukha shrine. All roof ridges and brass stupika finials are aligned in local group coordinates.",
+                camPos: [-62, 34, -62],
+                targetPos: [0, 19, -56]
+            });
+        }
+
+        // Build all architectural components
+        buildCourtyardAndPrakara();
+        buildManastambha();
+        buildBhairadeviMandapa();
+        buildMainTempleComplex();
+
+        // Hide loader
+        setTimeout(() => {
+            const loader = document.getElementById('loading');
+            loader.style.opacity = '0';
+            setTimeout(() => loader.style.display = 'none', 450);
+        }, 350);
+
+        // ============================================================================
+        // SECTION 11: EIGHT VALIDATION CAMERA PRESETS & REFERENCE INTEGRITY PANEL
+        // ============================================================================
+        const presets = [
+            { label: "1. 3/4 Exterior Overview",   c: [-92, 40, 132], t: [0, 10, 4] },
+            { label: "2. East Entrance Axis",      c: [0, 15, 148],   t: [0, 13, 45] },
+            { label: "3. Long Side Elevation",     c: [-96, 15, -5],  t: [0, 11, -5] },
+            { label: "4. Courtyard Gap View",      c: [-30, 11, 29],  t: [0, 8, 29] },
+            { label: "5. Interior Pillar Aisles",  c: [0, 6.6, 26],   t: [0, 6.4, -30] },
+            { label: "6. Carved Pillar Close-Up",  c: [-1.2, 6.8, 58.5], t: [-4.5, 6.8, 53.5] },
+            { label: "7. Ceiling & Upper Timber",  c: [48, 28, -52],  t: [0, 18, -54] },
+            { label: "8. Manastambha View",        c: [28, 20, 122],  t: [0, 16, 94] }
+        ];
+
+        const presetsPanel = document.getElementById('presets-panel');
+        presets.forEach((p, idx) => {
+            const btn = document.createElement('button');
+            btn.innerText = p.label;
+            btn.onclick = () => {
+                document.querySelectorAll('#presets-panel button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                moveCamera(p.c, p.t);
+            };
+            if (idx === 0) btn.classList.add('active');
+            presetsPanel.appendChild(btn);
+        });
+
+        function moveCamera(camArr, targetArr) {
+            new TWEEN.Tween(camera.position)
+                .to({ x: camArr[0], y: camArr[1], z: camArr[2] }, 1050)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .start();
+            new TWEEN.Tween(controls.target)
+                .to({ x: targetArr[0], y: targetArr[1], z: targetArr[2] }, 1050)
+                .easing(TWEEN.Easing.Cubic.InOut)
+                .start();
+        }
+
+        function setDefaultInfoContent() {
+            document.getElementById('dynamic-content').innerHTML = `
+                <h3>Reference-Led Architectural Overview</h3>
+                <p>Built in three documented phases (1430, 1451, and 1462 CE) under Vijayanagara royal patronage and Moodbidri's merchant guilds, the monument comprises an axial sequence of pillared halls culminating in a three-storey stone-and-timber sanctum:</p>
+                <div class="meta-grid">
+                    <div class="meta-item"><span>East Approach</span><strong>Manastambha (1462 CE)</strong></div>
+                    <div class="meta-item"><span>Detached Pavilion</span><strong>Bhairadevi Mandapa[cite: 1]</strong></div>
+                    <div class="meta-item"><span>Entry &amp; Dais Halls</span><strong>Chitradevi &amp; Namaskara[cite: 1]</strong></div>
+                    <div class="meta-item"><span>Inner Sacred Core</span><strong>Tirthankara, Lakshmi &amp; Sanctum[cite: 1]</strong></div>
+                </div>
+                <div class="limitation-note">
+                    <strong>Historical &amp; Metric Transparency:</strong> This model is a visually proportioned architectural reconstruction, not a laser-scanned survey twin[cite: 1]. While the detached forehall, 3-tiered hybrid stone/timber/copper roofline, and 5 distinct pillar families reflect photographic evidence, linear coordinates and reduced column grid counts are documented approximations[cite: 1].
+                </div>
+            `;
+        }
+        setDefaultInfoContent();
+
+        window.resetView = function () {
+            document.querySelectorAll('#presets-panel button').forEach((b, i) => b.classList.toggle('active', i === 0));
+            moveCamera([-92, 40, 132], [0, 10, 4]);
+            setDefaultInfoContent();
+        };
+
+        window.toggleFullscreen = function () {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen();
+            }
+        };
+
+        // ============================================================================
+        // SECTION 12: RAYCASTING & HOVER SELECTION (RESPECTING LAYER VISIBILITY)
+        // ============================================================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2(-99, -99);
+        let hoveredHitbox = null;
+        const tooltip = document.getElementById('tooltip');
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            tooltip.style.left = e.clientX + 'px';
+            tooltip.style.top = e.clientY + 'px';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (e.target.closest('.panel')) return;
+            if (hoveredHitbox) {
+                const d = hoveredHitbox.userData;
+                document.getElementById('dynamic-content').innerHTML = `
+                    <h3>${d.title}</h3>
+                    <div class="meta-grid">
+                        <div class="meta-item"><span>Chronology</span><strong>${d.phase}</strong></div>
+                        <div class="meta-item"><span>Evidence Status</span><strong>${d.confidence}</strong></div>
+                    </div>
+                    <p>${d.desc}</p>
+                    <div class="limitation-note">
+                        <strong>Reference Basis:</strong> ${d.evidence}
+                    </div>
+                `;
+                if (d.camPos && d.targetPos) {
+                    moveCamera(d.camPos, d.targetPos);
+                }
+            }
+        });
+
+        function clearHighlight() {
+            if (!hoveredHitbox) return;
+            hoveredHitbox.userData.targetMeshes.forEach(m => {
+                if (m.userData.origMat) m.material = m.userData.origMat;
+            });
+            hoveredHitbox = null;
+            document.body.style.cursor = 'default';
+            tooltip.style.opacity = 0;
+        }
+
+        function updateRaycast() {
+            raycaster.setFromCamera(mouse, camera);
+            // Filter interactables so hidden layers never intercept clicks or hover events
+            const activeHitboxes = interactables.filter(h => h.userData.layerGroup && h.userData.layerGroup.visible);
+            const hits = raycaster.intersectObjects(activeHitboxes, false);
+
+            if (hits.length > 0) {
+                const hit = hits[0].object;
+                if (hoveredHitbox !== hit) {
+                    clearHighlight();
+                    hoveredHitbox = hit;
+                    hoveredHitbox.userData.targetMeshes.forEach(m => {
+                        m.material = mats.highlight;
+                    });
+                    document.body.style.cursor = 'pointer';
+                    tooltip.innerText = hit.userData.title;
+                    tooltip.style.opacity = 1;
+                }
+            } else if (hoveredHitbox) {
+                clearHighlight();
+            }
+        }
+
+        // ============================================================================
+        // SECTION 13: RENDER LOOP & WINDOW RESIZE
+        // ============================================================================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            TWEEN.update(time);
+            controls.update();
+            updateRaycast();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
